@@ -5,10 +5,7 @@ import Terms._
 import SmallstepNam._
 
 class SmallstepNamTest extends FlatSpec with Matchers {
-  val term = new Term {
-    override def fold[C](alg: TermAlg[C]): C =
-      alg.lam(X, alg.lam(Y, alg.app(alg.vari(Y), alg.vari(Z))))
-  }
+  val term = Lam(X, Lam(Y, App(Var(Y), Var(Z))))
 
   "fresh" should "returns only fresh variables" in {
     val terms = List(("x", 0), ("y", 0), ("x", 2), ("z", 4))

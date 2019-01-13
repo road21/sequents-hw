@@ -7,8 +7,5 @@ object Terms {
   def Y: Name = ("y", 0)
   def Z: Name = ("z", 0)
 
-  def identity: Term = new Term {
-    override def fold[C](alg: TermAlg[C]): C =
-      alg.lam(X, alg.vari(X))
-  }
+  def identity: Term = Lam(X, Var(X))
 }

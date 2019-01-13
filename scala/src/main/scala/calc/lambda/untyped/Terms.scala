@@ -4,6 +4,8 @@ import calc.lambda.untyped.TermNam.Name
 
 object Terms {
   def X: Name = ("x", 0)
+  def Y: Name = ("y", 0)
+  def Z: Name = ("z", 0)
 
   def identity: Term = new Term {
     override def fold[C](alg: TermAlg[C]): C =

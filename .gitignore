@@ -1,5 +1,6 @@
-scala/.idea
-scala/.idea_modules
-scala/target
-scala/project/target
-
+*/.idea
+*/.idea_modules
+*/target
+*/project/target
+*.ibc
+.DS_Store

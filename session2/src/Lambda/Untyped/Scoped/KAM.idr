@@ -12,15 +12,13 @@ mutual
     (::) : Clos -> Env x -> Env (S x)  
     Nil : Env Z
 
-  data Clos : Type where 
-    Cl : Term x -> Env x -> Clos
-
-  data State : Type where
-    St : Term x -> Env x -> Stack -> State
+  data Clos = Cl (Term x) (Env x)
 
   Stack : Type
   Stack = List Clos
 
+  data State = St (Term x) (Env x) Stack
+  
  step : State -> Maybe State
  step (St (Var FZ) ((Cl t e) :: _) s) = Just $ St t e s
  step (St (Var (FS x)) (_::e) s) = Just $ St (Var x) e s

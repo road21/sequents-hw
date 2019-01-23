@@ -28,3 +28,15 @@ mutual
 
 runKAM : Term Z -> (Nat, Maybe State)
 runKAM t = iterCount step $ St t Nil []
+
+private
+test0 : runKAM Term0 = (7, Just $ St (Lam V0) Nil [])
+test0 = Refl
+
+private
+test1 : runKAM Term1 = (6, Just $ St (Lam V0) Nil [])
+test1 = Refl
+
+private
+test2 : runKAM Term2 = (6, Just $ St (Lam V0) Nil [])
+test2 = Refl

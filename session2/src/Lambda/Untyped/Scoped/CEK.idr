@@ -32,3 +32,15 @@ mutual
   
 runCEK : Term Z -> (Nat, Maybe State)
 runCEK t = iterCount step $ St t Nil Mt
+
+private
+test0 : runCEK Term0 = (9, Just $ St (Lam V0) Nil Mt)
+test0 = Refl
+
+private
+test1 : runCEK Term1 = (8, Just $ St (Lam V0) Nil Mt)
+test1 = Refl
+
+private
+test2 : runCEK Term2 = (8, Just $ St (Lam V0) Nil Mt)
+test2 = Refl

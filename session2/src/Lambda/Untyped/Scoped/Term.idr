@@ -33,3 +33,12 @@ plus = Lam $ Lam $ Lam $ Lam $ App (App V3 V1) (App (App V2 V1) V0)
 
 twotwo : Term Z
 twotwo = App (App plus two) two
+
+Term0 : Term Z
+Term0 = App (Lam $ App V0 V0) (Lam $ V0)
+
+Term1 : Term Z
+Term1 = App (App (Lam $ V0) (Lam $ V0)) (Lam $ V0)
+
+Term2 : Term Z
+Term2 = App (Lam $ V0) (App (Lam $ V0) (Lam $ V0))

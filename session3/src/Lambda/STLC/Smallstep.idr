@@ -48,7 +48,7 @@ step (App  t1        t2 ) =
 step  _                   = Nothing
 
 -- call-by-value
-stepV : Term g tt -> Maybe (Term g tt)
+stepV : Term g a -> Maybe (Term g a)
 stepV (App t1 t2) =
   if isVal t2 
     then 
@@ -57,6 +57,28 @@ stepV (App t1 t2) =
         _ => App <$> (stepV t1) <*> Just t2
     else App     t1         <$> (stepV t2) 
 stepV  _          = Nothing  
+
+-- strong call-by-name ??
+stepSN : Term g a -> Maybe (Term g a)
+stepSN (App (Lam body) sub) = Just $ subst1 body sub
+stepSN (App  t1        t2 ) =
+  if isVal t1
+    then App     t1        <$> (step t2)
+    else App <$> (step t1) <*> pure t2
+stepSN (Lam t)              = Lam <$> stepSN t
+stepSN  _                   = Nothing
+
+-- strong call-by-value ??
+stepSV : Term g a -> Maybe (Term g a)
+stepSV (App t1 t2) =
+  if isVal t2
+    then
+      case t1 of
+        Lam t => Just $ subst1 t t2
+        _ => App <$> (stepSV t1) <*> Just t2
+    else App     t1         <$> (stepSV t2)
+stepSV (Lam t)     = Lam <$> stepSV t
+stepSV  _          = Nothing
 
 stepIter : Term g a -> Maybe (Term g a)
 stepIter = iter step

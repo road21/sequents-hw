@@ -13,20 +13,20 @@ trait TermAlg[A] {
   def appT(t: A, ty: Type): A                // type application
 
   // extensions
-  def tuple(t1: A, t2: A): A
-  def fst(t: A): A
-  def snd(t: A): A
-
-  def unit: A
+  def tuple(ts: List[A]): A
+  def proj(t: A, n: Int): A
 
   def `true`: A
   def `false`: A
   def ifElse(c: A, f: A, s: A): A
 
   def int(v: Int): A
+  def double(v: Double): A
+
   def plus(t1: A, t2: A): A
   def uMinus(t: A): A
   def beq(l: A, r: A): A
+  def mult(t1: A, t2: A): A
 }
 
 object TermAlg {

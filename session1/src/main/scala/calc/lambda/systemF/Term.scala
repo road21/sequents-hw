@@ -7,6 +7,8 @@ import cats.syntax.order._
 import cats.instances.string._
 import cats.instances.int._
 
+import scala.annotation.tailrec
+
 sealed trait Term extends Subst[Term] {
   def isValue: Boolean
   def substT(n: Name, sub: Type): Term
@@ -46,7 +48,7 @@ object Term {
     lazy val fresh = t.fresh
 
     override def substT(n: Name, sub: Type): Term =
-      Lam(v, ty, t.substT(n, sub))
+      Lam(v, ty.subst(n, sub), t.substT(n, sub))
 
     override def subst(n: Name, sub: Term): Term =
       if (n == v) this
@@ -77,13 +79,84 @@ object Term {
     }
   }
 
-  case class LamT(nameT: Name, term: Term) extends Value {
+  case class LamT(nameT: Name, t: Term) extends Value {
+    lazy val free = t.free
+    lazy val fresh = t.fresh
+
+    override def subst(n: Name, sub: Term): Term = t.subst(n, sub)
+    override def substT(n: Name, sub: Type): Term =
+      if (nameT == n) this else LamT(n, t.substT(n, sub))
+
+    override def to[A: TermAlg]: A = TermAlg[A].lamT(nameT, t.to[A])
+    override def step: Option[Term] = None
+  }
+
+  case class AppT(term: Term, `type`: Type) extends Expression {
     lazy val free = term.free
     lazy val fresh = term.fresh
 
-    override def subst(n: Name, sub: Term): Term = term.subst(n, sub)
-    override def substT(n: Name, sub: Type): Term = ???
-    override def to[A: TermAlg]: A = ???
-    override def step: Option[Term] = ???
+    override def subst(n: Name, sub: Term): Term =
+      AppT(term.subst(n, sub), `type`)
+
+    override def substT(n: Name, sub: Type): Term =
+      AppT(term, sub.subst(n, sub))
+
+    override def to[A: TermAlg]: A =
+      TermAlg[A].appT(term.to[A], `type`)
+
+    override def step: Option[Term] = term match {
+      case LamT(v, t) =>
+        Some(t.substT(v, `type`))
+      case _ => term.step.map(AppT(_, `type`))
+    }
+  }
+
+  case class TupleN(f: List[Term]) extends Value {
+    lazy val free = f.map(_.free).fold(Set())(_ ++ _)
+    lazy val fresh = f.map(_.fresh).fold(Name.X)(_ max _)
+
+    override def subst(n: Name, sub: Term): Term =
+      TupleN(f.map(_.subst(n, sub)))
+
+    override def substT(n: Name, sub: Type): Term =
+      TupleN(f.map(_.substT(n, sub)))
+
+    override def to[A: TermAlg]: A =
+      TermAlg[A].tuple(f.map(_.to[A]))
+
+    override def step: Option[Term] = {
+      @tailrec
+      def stepAcc(prefix: List[Term], postfix: List[Term]): Option[Term] = postfix match {
+        case (h: Value) :: t =>
+          stepAcc(h :: prefix, t)
+        case h :: t =>
+          h.step.map(x => TupleN(prefix.reverse ++ (x :: t)))
+        case Nil => None
+      }
+
+      stepAcc(Nil, f)
+    }
+  }
+
+  case class Projection(term: Term, n: Int) extends Expression {
+    lazy val free = term.free
+    lazy val fresh = term.fresh
+
+    override def to[A: TermAlg]: A =
+      TermAlg[A].proj(term.to[A], n)
+
+    override def step: Option[Term] = term match {
+      case TupleN(list) =>
+        list.drop(n - 1).headOption
+      case t: Expression =>
+        t.step.map(Projection(_, n))
+      case _ => None
+    }
+
+    override def substT(name: Name, sub: Type): Term =
+      Projection(term.substT(name, sub), n)
+
+    override def subst(name: Name, sub: Term): Term =
+      Projection(term.subst(name, sub), n)
   }
 }

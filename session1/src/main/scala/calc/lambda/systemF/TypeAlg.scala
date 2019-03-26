@@ -8,7 +8,7 @@ trait TypeAlg[A] {
   def forall(name: Name, t: A): A // universal type
 
   // extensions
-  def product(t1: A, t2: A): A
+  def product(ts: List[A]): A
 
   def unit: A
   def bool: A
@@ -21,7 +21,7 @@ object TypeAlg {
   object syntax {
     implicit class typeAlgOps[A: TypeAlg](t1: A) {
       def ->>(t2: A): A = TypeAlg[A].impl(t1, t2)
-      def ×(t2: A): A = TypeAlg[A].product(t1, t2)
+      def ×(t2: A): A = TypeAlg[A].product(List(t1, t2))
     }
   }
 }

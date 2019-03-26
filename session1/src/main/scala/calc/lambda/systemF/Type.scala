@@ -48,15 +48,15 @@ object Type {
       TypeAlg[A].forall(v, t.to[A])
   }
 
-  case class Product(f: Type, s: Type) extends Type {
-    lazy val free = f.free ++ s.free
-    lazy val fresh = f.fresh max s.fresh
+  case class Product(ts: List[Type]) extends Type {
+    lazy val free = ts.map(_.free).fold(Set())(_ ++ _)
+    lazy val fresh = ts.map(_.fresh).fold(Name.X)(_ max _)
 
     override def subst(n: Name, sub: Type): Type =
-      Product(f.subst(n, sub), s.subst(n, sub))
+      Product(ts.map(_.subst(n, sub)))
 
     override def to[A: TypeAlg]: A =
-      f.to[A] × s.to[A]
+      TypeAlg[A].product(ts.map(_.to[A]))
   }
 
   sealed trait SimpleType extends Type {

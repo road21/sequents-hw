@@ -138,10 +138,10 @@ object SmallstepNam {
 
   def substTInTerm(n: Name, sub: Type, root: Term): Term = root match {
     case Lam(x, ty, term) =>
-      Lam(x, substT(n, sub, ty), term)
+      Lam(x, substT(n, sub, ty), substTInTerm(n, sub, term))
     case AppT(term, ty) =>
       AppT(term, substT(n, sub, ty))
-    case l @ LamT(`n`, t) => l
+    case l @ LamT(`n`, _) => l
     case LamT(x, t) => LamT(x, substTInTerm(n, sub, t))
     case t => t
   }

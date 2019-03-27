@@ -159,4 +159,66 @@ object Term {
     override def subst(name: Name, sub: Term): Term =
       Projection(term.subst(name, sub), n)
   }
+
+  sealed trait SimpleValue extends Value {
+    lazy val free = Set()
+    lazy val fresh = Name.X
+    override def subst(n: Name, sub: Term): Term = this
+    override def substT(n: Name, sub: Type): Term = this
+    override def step: Option[Term] = None
+  }
+
+  case object True extends SimpleValue {
+    override def to[A: TermAlg]: A = TermAlg[A].`true`
+  }
+
+  case object False extends SimpleValue {
+    override def to[A: TermAlg]: A = TermAlg[A].`false`
+  }
+
+  case class IfElse(c: Term, t: Term, f: Term) extends Expression {
+    lazy val free = c.free ++ t.free ++ f.free
+    override def fresh = c.fresh max t.fresh max f.fresh
+
+    override def subst(n: Name, sub: Term): Term =
+      IfElse(c.subst(n, sub), t.subst(n, sub), f.subst(n, sub))
+
+    override def substT(n: Name, sub: Type): Term =
+      IfElse(c.substT(n, sub), t.substT(n, sub), f.substT(n, sub))
+
+    override def to[A: TermAlg]: A =
+      TermAlg[A].ifElse(c.to[A], t.to[A], f.to[A])
+
+    override def step: Option[Term] = c match {
+      case True => Some(t)
+      case False => Some(f)
+      case _: Expression =>
+        c.step.map(IfElse(_, t, f))
+      case _ => None
+    }
+  }
+
+  case class IntValue(v: Int) extends SimpleValue {
+    override def to[A: TermAlg]: A = TermAlg[A].int(v)
+  }
+
+  case class DoubleValue(v: Double) extends SimpleValue {
+    override def to[A: TermAlg]: A = TermAlg[A].double(v)
+  }
+
+  case class BinaryOp[X, Y, R](l: Term, r: Term) extends Expression {
+    override def substT(n: (String, Int), sub: Type): Term = ???
+
+    override def to[A: TermAlg]: A = ???
+
+    override def step: Option[Term] = l match {
+      case _: Value =>
+    }
+
+    override def free: Set[(String, Int)] = ???
+
+    override def fresh: (String, Int) = ???
+
+    override def subst(n: (String, Int), sub: Term): Term = ???
+  }
 }

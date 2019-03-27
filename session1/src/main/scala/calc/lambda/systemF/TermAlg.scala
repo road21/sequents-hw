@@ -16,17 +16,17 @@ trait TermAlg[A] {
   def tuple(ts: List[A]): A
   def proj(t: A, n: Int): A
 
-  def `true`: A
-  def `false`: A
-  def ifElse(c: A, f: A, s: A): A
-
+  def boolean(v: Boolean): A
   def int(v: Int): A
   def double(v: Double): A
 
-  def plus(t1: A, t2: A): A
-  def uMinus(t: A): A
-  def beq(l: A, r: A): A
-  def mult(t1: A, t2: A): A
+//  def plus(t1: A, t2: A): A
+//  def uMinus(t: A): A
+//  def beq(l: A, r: A): A
+//  def mult(t1: A, t2: A): A
+
+  def binaryOp[X, Y, R](op: BinaryOp[X, Y, R], l: A, r: A): A
+//  def unaryOpp[X, R](op: UnaryOp[X, R], t: A): A
 }
 
 object TermAlg {
@@ -36,8 +36,8 @@ object TermAlg {
 
   object syntax {
     implicit class termAlgOps[A: TermAlg](t1: A) {
-      def <=(t2: A): A = TermAlg[A].beq(t1, t2)
-      def +(t2: A): A = TermAlg[A].plus(t1, t2)
+//      def <=(t2: A): A = TermAlg[A].beq(t1, t2)
+//      def +(t2: A): A = TermAlg[A].plus(t1, t2)
     }
   }
 }

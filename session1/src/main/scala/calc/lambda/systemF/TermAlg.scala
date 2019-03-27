@@ -18,6 +18,9 @@ trait TermAlg[A] {
   def tuple(ts: List[A]): A
   def proj(t: A, n: Int): A
 
+  def record(ts: List[(String, A)]): A // non empty list?
+  def field(t: A, n: String): A
+
   def boolean(v: Boolean): A
   def int(v: Int): A
   def double(v: Double): A
@@ -56,16 +59,18 @@ object TermAlg {
         case Plus => PlusOp(l, r)
       }
       override def unaryOp(op: Operation.UnaryOp, t: Term): Term = ???
+      override def record(ts: List[(String, Term)]): Term = Record(ts)
+      override def field(t: Term, n: String): Term = Field(t, n)
     }
 
     implicit val StringInstance: TermAlg[String] = new TermAlg[String] {
+      import TypeAlg.instances._
+
       def printName(n: Name): String = n._1 + (if (n._2 == 0) "" else n._2)
 
       override def v(name: Name): String = printName(name)
       override def lam(name: Name, ty: Type, term: String): String = {
-//        import TypeAlg.instances._
-//        implicitly[TypeAlg[String]]
-
+        // TODO: why implicit not found?
         s"λ${printName(name)}: ${ty.to[String](TypeAlg.instances.StringInstance)}. $term"
       }
 
@@ -83,6 +88,12 @@ object TermAlg {
 
       override def proj(t: String, n: Int): String =
         s"$t._$n"
+
+      override def record(s: List[(String, String)]): String =
+        s"(${s.map { case (x, y) => s"$x:$y" }.mkString(", ")})"
+
+      override def field(t: String, n: String): String =
+        s"$t.$n"
 
       override def boolean(v: Boolean): String = v.toString
       override def int(v: Int): String = v.toString

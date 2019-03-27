@@ -164,6 +164,49 @@ object Term {
       Projection(term.subst(name, sub), n)
   }
 
+  case class Record(ts: List[(String, Term)]) extends Value {
+    lazy val free = ts.map(_._2.free).fold(Set())(_ ++ _)
+    lazy val fresh = ts.map(_._2.fresh).fold(Name.X)(_ max _)
+
+    override def substT(n: Name, sub: Type): Term =
+      Record(ts.map { case (x, y) => (x, y.substT(n, sub)) } )
+
+    override def to[A: TermAlg]: A =
+      TermAlg[A].record(ts.map { case (x, y) => (x, y.to[A]) } )
+
+    override def step: Option[Term] = { // FIXME: copypaste from tuple
+      @tailrec
+      def stepAcc(prefix: List[(String, Term)], postfix: List[(String, Term)]): Option[Term] = postfix match {
+        case (n, h: Value) :: t =>
+          stepAcc((n, h) :: prefix, t)
+        case (n, h) :: t =>
+          h.step.map(x => Record(prefix.reverse ++ ((n, x) :: t)))
+        case Nil => None
+      }
+
+      stepAcc(Nil, ts)
+    }
+
+    override def subst(n: (String, Int), sub: Term): Term =
+      Record(ts.map { case (x, y) => (x, y.subst(n, sub)) } )
+  }
+
+  case class Field(t: Term, p: String) extends Expression {
+    lazy val free = t.free
+    lazy val fresh = t.fresh
+
+    override def subst(n: Name, sub: Term): Term = t.subst(n, sub)
+    override def substT(n: (String, Int), sub: Type): Term = t.substT(n, sub)
+    override def to[A: TermAlg]: A = t.to[A]
+    override def step: Option[Term] = t match {
+      case Record(l) =>
+        l.find(_._1 == p).map(_._2)
+      case _: Expression =>
+        t.step.map(Field(_, p))
+      case _ => None
+    }
+  }
+
   sealed trait SimpleValue extends Value {
     lazy val free = Set()
     lazy val fresh = Name.X
@@ -182,6 +225,10 @@ object Term {
 
   case class DoubleValue(v: Double) extends SimpleValue {
     override def to[A: TermAlg]: A = TermAlg[A].double(v)
+  }
+
+  case class StringValue(s: String) extends SimpleValue {
+    override def to[A: TermAlg]: A = TermAlg[A].string(s)
   }
 
   abstract class BinaryOpExpr(op: BinaryOp, l: Term, r: Term) extends Expression {

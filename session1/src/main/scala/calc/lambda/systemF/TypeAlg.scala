@@ -9,10 +9,12 @@ trait TypeAlg[A] {
 
   // extensions
   def product(ts: List[A]): A
+  def record(ts: List[(String, A)]): A
 
   def bool: A
   def int: A
   def double: A
+  def string: A
 }
 
 object TypeAlg {
@@ -32,10 +34,13 @@ object TypeAlg {
       override def v(name: Name): String = printName(name)
       override def impl(t1: String, t2: String): String = s"($t1 -> $t2)"
       override def forall(name: Name, t: String): String = s"∀${printName(name)}. $t"
+      override def record(ts: List[(String, String)]): String =
+        s"(${ts.map { case (x, y) => s"$x: $y"}.mkString(", ")})"
       override def product(ts: List[String]): String = ts.mkString("×")
       override def bool: String = "Bool"
       override def int: String = "Int"
       override def double: String = "Double"
+      override def string: String = "String"
     }
   }
 }

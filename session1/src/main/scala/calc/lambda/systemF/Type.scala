@@ -62,6 +62,17 @@ object Type {
       TypeAlg[A].product(ts.map(_.to[A]))
   }
 
+  case class Record(ts: List[(String, Type)]) extends Type {
+    lazy val free = ts.map(_._2.free).fold(Set())(_ ++ _)
+    lazy val fresh = ts.map(_._2.fresh).fold(Name.X)(_ max _)
+
+    override def to[A: TypeAlg]: A =
+      TypeAlg[A].record(ts.map { case (x, y) => (x, y.to[A]) })
+
+    override def subst(n: (String, Int), sub: Type): Type =
+      Record(ts.map { case (x, y) => (x, y.subst(n, sub)) } )
+  }
+
   sealed trait SimpleType extends Type {
     lazy val free = Set()
     lazy val fresh = Name.X

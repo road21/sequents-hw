@@ -1,15 +1,11 @@
 package calc.lambda.systemF
 
-import calc.lambda.systemF.Term.IntValue
+object Operation {
+  sealed trait BinaryOp
+  case object Plus extends BinaryOp
+//  case object IfThenElse extends BinaryOp
 
-sealed trait BinaryOp[X, Y, R] {
-  def op(x: X, y: Y): R
-}
-
-case object Plus extends BinaryOp[IntValue, IntValue, IntValue] {
-  override def op(x: IntValue, y: IntValue): IntValue = IntValue(x.v + y.v)
-}
-
-class Operation {
-
+  sealed trait UnaryOp
+  case object ToDouble extends UnaryOp
+  case object ToInt extends UnaryOp
 }

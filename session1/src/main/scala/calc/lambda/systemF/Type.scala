@@ -15,7 +15,10 @@ sealed trait Type extends Subst[Type] {
 object Type {
   case class Var(name: Name) extends Type {
     lazy val free = Set(name)
-    lazy val fresh = name.map(_ + 1)
+    lazy val fresh = {
+      val (x, y) = name
+      (x, y + 1)
+    }
 
     override def subst(n: Name, sub: Type): Type =
       if (n == name) sub else this
@@ -66,15 +69,15 @@ object Type {
     override def subst(n: Name, sub: Type): Type = this
   }
 
-  case object Unit extends SimpleType {
-    override def to[A: TypeAlg]: A = TypeAlg[A].unit
-  }
-
   case object Bool extends SimpleType {
     override def to[A: TypeAlg]: A = TypeAlg[A].bool
   }
 
   case object Int extends SimpleType {
     override def to[A: TypeAlg]: A = TypeAlg[A].int
+  }
+
+  case object Double extends SimpleType {
+    override def to[A: TypeAlg]: A = TypeAlg[A].double
   }
 }

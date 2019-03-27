@@ -1,6 +1,7 @@
 package calc.lambda.systemF
 
 import calc.lambda.systemF.Name.Name
+import calc.lambda.systemF.Operation.{BinaryOp, Plus}
 import cats.instances.tuple._
 import cats.syntax.functor._
 import cats.syntax.order._
@@ -33,7 +34,10 @@ object Term {
 
   case class Var(name: Name) extends Value {
     lazy val free = Set(name)
-    lazy val fresh = name.map(_ + 1)
+    lazy val fresh = {
+      val (x, y) = name // TODO
+      (x, y + 1)
+    }
 
     override def subst(n: Name, sub: Term): Term =
       if (n == name) sub else this
@@ -168,34 +172,8 @@ object Term {
     override def step: Option[Term] = None
   }
 
-  case object True extends SimpleValue {
-    override def to[A: TermAlg]: A = TermAlg[A].`true`
-  }
-
-  case object False extends SimpleValue {
-    override def to[A: TermAlg]: A = TermAlg[A].`false`
-  }
-
-  case class IfElse(c: Term, t: Term, f: Term) extends Expression {
-    lazy val free = c.free ++ t.free ++ f.free
-    override def fresh = c.fresh max t.fresh max f.fresh
-
-    override def subst(n: Name, sub: Term): Term =
-      IfElse(c.subst(n, sub), t.subst(n, sub), f.subst(n, sub))
-
-    override def substT(n: Name, sub: Type): Term =
-      IfElse(c.substT(n, sub), t.substT(n, sub), f.substT(n, sub))
-
-    override def to[A: TermAlg]: A =
-      TermAlg[A].ifElse(c.to[A], t.to[A], f.to[A])
-
-    override def step: Option[Term] = c match {
-      case True => Some(t)
-      case False => Some(f)
-      case _: Expression =>
-        c.step.map(IfElse(_, t, f))
-      case _ => None
-    }
+  case class BooleanValue(v: Boolean) extends SimpleValue {
+    override def to[A: TermAlg]: A = TermAlg[A].boolean(v)
   }
 
   case class IntValue(v: Int) extends SimpleValue {
@@ -206,19 +184,30 @@ object Term {
     override def to[A: TermAlg]: A = TermAlg[A].double(v)
   }
 
-  case class BinaryOp[X, Y, R](l: Term, r: Term) extends Expression {
-    override def substT(n: (String, Int), sub: Type): Term = ???
+  abstract class BinaryOpExpr(op: BinaryOp, l: Term, r: Term) extends Expression {
+    def applyOp(l: Term, r: Term): Term
 
-    override def to[A: TermAlg]: A = ???
+    lazy val free = l.free ++ r.free
+    lazy val fresh = l.fresh max r.fresh
 
-    override def step: Option[Term] = l match {
-      case _: Value =>
+    override def subst(n: Name, sub: Term): Term =
+      applyOp(l.subst(n, sub), r.subst(n, sub))
+
+    override def substT(n: Name, sub: Type): Term =
+      applyOp(l.substT(n, sub), r.substT(n, sub))
+
+    override def to[A: TermAlg]: A = TermAlg[A].binaryOp(op, l.to[A], r.to[A])
+  }
+
+  case class PlusOp(l: Term, r: Term) extends BinaryOpExpr(Plus, l, r) {
+    def applyOp(l: Term, r: Term): Term = PlusOp(l, r)
+
+    override def step: Option[Term] = (l, r) match {
+      case (_: Expression, _) => l.step.map(PlusOp(_, r))
+      case (_, _: Expression) => r.step.map(PlusOp(l, _))
+      case (IntValue(x), IntValue(y)) => Some(IntValue(x + y))
+      case (DoubleValue(x), DoubleValue(y)) => Some(DoubleValue(x + y))
+      case _ => None
     }
-
-    override def free: Set[(String, Int)] = ???
-
-    override def fresh: (String, Int) = ???
-
-    override def subst(n: (String, Int), sub: Term): Term = ???
   }
 }

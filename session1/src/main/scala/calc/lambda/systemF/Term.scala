@@ -2,11 +2,14 @@ package calc.lambda.systemF
 
 import calc.lambda.systemF.Name.Name
 import calc.lambda.systemF.Operation.{BinaryOp, Plus}
+import cats.{Applicative, Comonad, Id}
 import cats.instances.tuple._
 import cats.syntax.functor._
 import cats.syntax.order._
 import cats.instances.string._
 import cats.instances.int._
+import cats.syntax.comonad._
+import cats.syntax.applicative._
 
 import scala.annotation.tailrec
 
@@ -128,18 +131,8 @@ object Term {
     override def to[A: TermAlg]: A =
       TermAlg[A].tuple(f.map(_.to[A]))
 
-    override def step: Option[Term] = {
-      @tailrec
-      def stepAcc(prefix: List[Term], postfix: List[Term]): Option[Term] = postfix match {
-        case (h: Value) :: t =>
-          stepAcc(h :: prefix, t)
-        case h :: t =>
-          h.step.map(x => TupleN(prefix.reverse ++ (x :: t)))
-        case Nil => None
-      }
-
-      stepAcc(Nil, f)
-    }
+    override def step: Option[Term] =
+      stepList[Id](Nil, f, TupleN)
   }
 
   case class Projection(term: Term, n: Int) extends Expression {
@@ -174,21 +167,41 @@ object Term {
     override def to[A: TermAlg]: A =
       TermAlg[A].record(ts.map { case (x, y) => (x, y.to[A]) } )
 
-    override def step: Option[Term] = { // FIXME: copypaste from tuple
-      @tailrec
-      def stepAcc(prefix: List[(String, Term)], postfix: List[(String, Term)]): Option[Term] = postfix match {
-        case (n, h: Value) :: t =>
-          stepAcc((n, h) :: prefix, t)
-        case (n, h) :: t =>
-          h.step.map(x => Record(prefix.reverse ++ ((n, x) :: t)))
-        case Nil => None
-      }
-
-      stepAcc(Nil, ts)
-    }
+    override def step: Option[Term] =
+      stepList[(String, ?)](Nil, ts, Record)
 
     override def subst(n: (String, Int), sub: Term): Term =
       Record(ts.map { case (x, y) => (x, y.subst(n, sub)) } )
+  }
+
+  case class ListT(ty: Type, v: List[Term]) extends Value {
+    lazy val free = v.map(_.free).fold(Set())(_ ++ _)
+    lazy val fresh = v.map(_.fresh).fold(Name.X)(_ max _)
+    override def subst(n: Name, sub: Term): Term = ListT(ty, v.map(_.subst(n, sub)))
+    override def substT(n: Name, sub: Type): Term = ListT(ty.subst(n, sub), v.map(_.substT(n, sub)))
+    override def to[A: TermAlg]: A = TermAlg[A].list(ty, v.map(_.to[A]))
+    override def step: Option[Term] =
+      stepList[Id](Nil, v, ListT(ty, _))
+  }
+
+  case class Fold(l: Term, e: Term, f: Term) extends Expression {
+    lazy val free = l.free ++ e.free ++ f.free
+    lazy val fresh = l.fresh max e.fresh max f.fresh
+    override def subst(n: Name, sub: Term): Term =
+      Fold(l.subst(n, sub), e.subst(n, sub), f.subst(n, sub))
+    override def substT(n: Name, sub: Type): Term =
+      Fold(l.substT(n, sub), e.substT(n, sub), f.substT(n, sub))
+    override def to[A: TermAlg]: A = TermAlg[A].fold(l.to, e.to, f.to)
+
+    override def step: Option[Term] = (l, e, f) match {
+      case (ListT(ty, v), e: Value, l: Lam) =>
+        v.foldLeft[Option[Term]](Some(e)) {
+          case (Some(x), y) =>
+            App(l, TupleN(List(x, y))).reduce.lastOption
+          case _ => None
+        }
+      case _ => ???
+    }
   }
 
   case class Field(t: Term, p: String) extends Expression {
@@ -196,7 +209,7 @@ object Term {
     lazy val fresh = t.fresh
 
     override def subst(n: Name, sub: Term): Term = t.subst(n, sub)
-    override def substT(n: (String, Int), sub: Type): Term = t.substT(n, sub)
+    override def substT(n: Name, sub: Type): Term = t.substT(n, sub)
     override def to[A: TermAlg]: A = t.to[A]
     override def step: Option[Term] = t match {
       case Record(l) =>
@@ -256,5 +269,15 @@ object Term {
       case (DoubleValue(x), DoubleValue(y)) => Some(DoubleValue(x + y))
       case _ => None
     }
+  }
+
+  @tailrec
+  def stepList[F[_]: Comonad: Applicative](prefix: List[F[Term]], postfix: List[F[Term]], build: List[F[Term]] => Term): Option[Term] = postfix match {
+    case h :: t =>
+      val ext = h.extract
+      if (ext.isValue)
+        stepList(h :: prefix, t, build)
+      else ext.step.map(x => build(prefix.reverse ++ (x.pure[F] :: t)))
+    case Nil => None
   }
 }

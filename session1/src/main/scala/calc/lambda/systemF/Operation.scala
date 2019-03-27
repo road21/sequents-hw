@@ -7,5 +7,4 @@ object Operation {
 
   sealed trait UnaryOp
   case object ToDouble extends UnaryOp
-  case object ToInt extends UnaryOp
 }

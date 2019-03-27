@@ -73,6 +73,14 @@ object Type {
       Record(ts.map { case (x, y) => (x, y.subst(n, sub)) } )
   }
 
+  case class ListT(t: Type) extends Type {
+    lazy val free: Set[(String, Int)] = t.free
+    lazy val fresh: (String, Int) = t.fresh
+    override def to[A: TypeAlg]: A = TypeAlg[A].list(t.to[A])
+    override def subst(n: Name, sub: Type): Type =
+      t.subst(n, sub)
+  }
+
   sealed trait SimpleType extends Type {
     lazy val free = Set()
     lazy val fresh = Name.X

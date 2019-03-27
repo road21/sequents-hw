@@ -10,6 +10,7 @@ trait TypeAlg[A] {
   // extensions
   def product(ts: List[A]): A
   def record(ts: List[(String, A)]): A
+  def list(t: A): A
 
   def bool: A
   def int: A
@@ -41,6 +42,7 @@ object TypeAlg {
       override def int: String = "Int"
       override def double: String = "Double"
       override def string: String = "String"
+      override def list(t: String): String = s"List [$t]"
     }
   }
 }

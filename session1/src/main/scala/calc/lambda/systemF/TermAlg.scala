@@ -21,6 +21,9 @@ trait TermAlg[A] {
   def record(ts: List[(String, A)]): A // non empty list?
   def field(t: A, n: String): A
 
+  def list(ty: Type, v: List[A]): A
+  def fold(l: A, e: A, f: A): A
+
   def boolean(v: Boolean): A
   def int(v: Int): A
   def double(v: Double): A
@@ -61,6 +64,8 @@ object TermAlg {
       override def unaryOp(op: Operation.UnaryOp, t: Term): Term = ???
       override def record(ts: List[(String, Term)]): Term = Record(ts)
       override def field(t: Term, n: String): Term = Field(t, n)
+      override def list(ty: Type, v: List[Term]): Term = ListT(ty, v)
+      override def fold(l: Term, e: Term, f: Term): Term = Fold(l, e, f)
     }
 
     implicit val StringInstance: TermAlg[String] = new TermAlg[String] {
@@ -105,6 +110,11 @@ object TermAlg {
       }
 
       override def unaryOp(op: UnaryOp, t: String): String = ???
+
+      override def list(ty: Type, v: List[String]): String =
+        s"List[${ty.to[String](TypeAlg.instances.StringInstance)}](${v.mkString(", ")})"
+
+      override def fold(l: String, e: String, f: String): String = s"fold($l, $e, $f)"
     }
   }
 }

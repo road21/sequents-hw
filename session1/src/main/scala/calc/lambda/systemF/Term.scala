@@ -20,9 +20,11 @@ sealed trait Term extends Subst[Term] {
   def to[A: TermAlg]: A
   def step: Option[Term]
 
-  def reduce: List[Term] = step match {
-    case Some(t) => t :: t.reduce
-    case None => Nil
+  def reduce: List[Term] = this :: {
+    step match {
+      case Some(t) => t :: t.reduce
+      case None => Nil
+    }
   }
 }
 
@@ -92,7 +94,7 @@ object Term {
 
     override def subst(n: Name, sub: Term): Term = t.subst(n, sub)
     override def substT(n: Name, sub: Type): Term =
-      if (nameT == n) this else LamT(n, t.substT(n, sub))
+      if (nameT == n) this else LamT(nameT, t.substT(n, sub))
 
     override def to[A: TermAlg]: A = TermAlg[A].lamT(nameT, t.to[A])
     override def step: Option[Term] = None
@@ -194,13 +196,19 @@ object Term {
     override def to[A: TermAlg]: A = TermAlg[A].fold(l.to, e.to, f.to)
 
     override def step: Option[Term] = (l, e, f) match {
-      case (ListT(ty, v), e: Value, l: Lam) =>
-        v.foldLeft[Option[Term]](Some(e)) {
-          case (Some(x), y) =>
+      case (ListT(_, v), e: Value, l: Lam) =>
+        v.foldRight[Option[Term]](Some(e)) {
+          case (x, Some(y)) =>
             App(l, TupleN(List(x, y))).reduce.lastOption
           case _ => None
         }
-      case _ => ???
+      case (l: Expression, _, _) =>
+        l.step.map(Fold(_, e, f))
+      case (_, e: Expression, _) =>
+        e.step.map(Fold(l, _, f))
+      case (_, _, f: Expression) =>
+        f.step.map(Fold(l, e, _))
+      case _ => None
     }
   }
 
@@ -267,6 +275,17 @@ object Term {
       case (_, _: Expression) => r.step.map(PlusOp(l, _))
       case (IntValue(x), IntValue(y)) => Some(IntValue(x + y))
       case (DoubleValue(x), DoubleValue(y)) => Some(DoubleValue(x + y))
+      case _ => None
+    }
+  }
+
+  case class AppendOp(l: Term, r: Term) extends BinaryOpExpr(Plus, l, r) {
+    def applyOp(l: Term, r: Term): Term = AppendOp(l, r)
+
+    override def step: Option[Term] = (l, r) match {
+      case (_: Expression, _) => l.step.map(AppendOp(_, r))
+      case (_, _: Expression) => r.step.map(AppendOp(l, _))
+      case (ListT(ty, x), ListT(ty2, y)) if ty2 == ty => Some(ListT(ty, x ++ y)) // ty2 == ty ??
       case _ => None
     }
   }

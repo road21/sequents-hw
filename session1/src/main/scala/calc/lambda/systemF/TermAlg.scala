@@ -1,7 +1,7 @@
 package calc.lambda.systemF
 
 import calc.lambda.systemF.Name.Name
-import calc.lambda.systemF.Operation.{BinaryOp, Plus, UnaryOp}
+import calc.lambda.systemF.Operation.{Append, BinaryOp, Plus, UnaryOp}
 import calc.lambda.systemF.Term._
 import cats.Id
 import cats.arrow.FunctionK
@@ -18,7 +18,7 @@ trait TermAlg[A] {
   def tuple(ts: List[A]): A
   def proj(t: A, n: Int): A
 
-  def record(ts: List[(String, A)]): A // non empty list?
+  def record(ts: List[(String, A)]): A
   def field(t: A, n: String): A
 
   def list(ty: Type, v: List[A]): A
@@ -29,7 +29,7 @@ trait TermAlg[A] {
   def double(v: Double): A
   def string(s: String): A
 
-  def unaryOp(op: UnaryOp, t: A): A
+  def unaryOp(op: UnaryOp, t: A): A // TODO: to think about operations, fold and projections are ops too
   def binaryOp(op: BinaryOp, l: A, r: A): A
 }
 
@@ -60,6 +60,7 @@ object TermAlg {
       override def string(s: String): Term = ???
       override def binaryOp(op: BinaryOp, l: Term, r: Term): Term = op match {
         case Plus => PlusOp(l, r)
+        case Append => AppendOp(l, r)
       }
       override def unaryOp(op: Operation.UnaryOp, t: Term): Term = ???
       override def record(ts: List[(String, Term)]): Term = Record(ts)
@@ -107,6 +108,7 @@ object TermAlg {
 
       override def binaryOp(op: BinaryOp, l: String, r: String): String = op match {
         case Plus => s"($l + $r)"
+        case Append => s"($l ++ $r)"
       }
 
       override def unaryOp(op: UnaryOp, t: String): String = ???
